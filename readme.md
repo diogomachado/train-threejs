@@ -1,5 +1,6 @@
-# Three.js Starter
+![Screen Recording 2022-04-14 at 10 24 46](https://user-images.githubusercontent.com/902918/163402221-400b7acd-258c-4f90-8354-f5da25504051.gif)
 
+# Three.js Starter
 Courtesy of Bruno Simon of https://threejs-journey.xyz/
 
 ## Setup
