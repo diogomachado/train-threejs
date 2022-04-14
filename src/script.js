@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as dat from 'dat.gui'
 
 // Debug
@@ -11,26 +12,30 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-
-// Objects
-const geometry = new THREE.TorusGeometry( .7, .2, 16, 100 );
-
-// Materials
-
-const material = new THREE.MeshBasicMaterial()
-material.color = new THREE.Color(0xff0000)
-
-// Mesh
-const sphere = new THREE.Mesh(geometry,material)
-scene.add(sphere)
+scene.background = new THREE.Color(0x151515)
 
 // Lights
+const hlight = new THREE.HemisphereLight(0xffffff, 0x080820, 0.2)
+scene.add(hlight);
 
-const pointLight = new THREE.PointLight(0xffffff, 0.1)
-pointLight.position.x = 2
-pointLight.position.y = 3
-pointLight.position.z = 4
-scene.add(pointLight)
+const castLight = new THREE.SpotLight(0xffa95c, 4);
+castLight.castShadow = true;
+castLight.shadow.bias = -0.0001;
+castLight.shadow.mapSize.width = 1024*4;
+castLight.shadow.mapSize.height = 1024*4;
+scene.add(castLight);
+
+//Create a DirectionalLight and turn on shadows for the light
+const light = new THREE.DirectionalLight( 0xffffff, 1, 100 );
+light.position.set( 0, 1, 0 ); //default; light shining from top
+light.castShadow = true; // default false
+scene.add( light );
+
+//Set up shadow properties for the light
+light.shadow.mapSize.width = 512; // default
+light.shadow.mapSize.height = 512; // default
+light.shadow.camera.near = 0.5; // default
+light.shadow.camera.far = 500; // default
 
 /**
  * Sizes
@@ -59,15 +64,18 @@ window.addEventListener('resize', () =>
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 0
-camera.position.y = 0
-camera.position.z = 2
+const camera = new THREE.PerspectiveCamera(15, sizes.width / sizes.height, 0.1, 100)
+camera.rotation.y = 45/180*Math.PI;
+camera.position.x = 10
+camera.position.y = 5
+camera.position.z = 20
 scene.add(camera)
 
 // Controls
-// const controls = new OrbitControls(camera, canvas)
-// controls.enableDamping = true
+const controls = new OrbitControls(camera, canvas)
+
+// Put the rotation more realistic
+controls.enableDamping = true;
 
 /**
  * Renderer
@@ -77,29 +85,54 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.toneMapping = THREE.ReinhardToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.toneMappingExposure = 2.3;
+
+// Add event on control
+controls.addEventListener('change', () =>
+{
+    renderer.render(scene, camera)
+})
+
+// Loader
+let loader = new GLTFLoader();
+loader.setCrossOrigin('./');
+loader.load('./scene.gltf', function(gltf){
+    let car = gltf.scene.children[0];
+    car.scale.set(0.5,0.5,0.5);
+    car.traverse(n => {
+        if(n.isMesh){
+            n.castShadow = true;
+            n.receiveShadow = true;
+
+            if(n.material.map) n.material.map.anisotropy = 16;
+        }
+    });
+
+    scene.add(gltf.scene);
+
+    animate();
+});
+
 
 /**
  * Animate
  */
-
-const clock = new THREE.Clock()
-
-const tick = () =>
+const animate = () =>
 {
-
-    const elapsedTime = clock.getElapsedTime()
-
-    // Update objects
-    sphere.rotation.y = .5 * elapsedTime
-
     // Update Orbital Controls
-    // controls.update()
+    controls.update()
+
+    castLight.position.set(
+        camera.position.x + 10,
+        camera.position.y + 10,
+        camera.position.z + 10
+    )
 
     // Render
     renderer.render(scene, camera)
 
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
+    // Call animate again on the next frame
+    window.requestAnimationFrame(animate)
 }
-
-tick()
